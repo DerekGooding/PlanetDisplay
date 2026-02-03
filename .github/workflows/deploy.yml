@@ -19,9 +19,11 @@ jobs:
           node-version: 20
 
       - run: npm ci
+        working-directory: my-3d-component
       - run: npm run build
+        working-directory: my-3d-component
 
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          publish_dir: ./my-3d-component/dist
