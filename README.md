@@ -1,1 +1,1 @@
-[Website](https://derekgooding.github.io/PlanetDisplay/my-3d-component/)
+[Website](https://derekgooding.github.io/PlanetDisplay/)
