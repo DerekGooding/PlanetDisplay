@@ -1,17 +1,5 @@
-import { Canvas, useLoader } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { TextureLoader } from 'three';
-
-// Component to display the sphere
-function Planet() {
-  const texture = useLoader(TextureLoader, '/planet_2d.png');
-  return (
-    <mesh>
-      <sphereGeometry args={[2, 32, 32]} />
-      <meshStandardMaterial map={texture} transparent={true} />
-    </mesh>
-  );
-}
 
 export default function App() {
   return (
@@ -20,7 +8,10 @@ export default function App() {
         <color attach="background" args={['#333']} />
         <ambientLight intensity={1.5} />
         <directionalLight position={[5, 5, 5]} intensity={1} />
-        <Planet />
+        <mesh>
+          <sphereGeometry args={[2, 32, 32]} />
+          <meshStandardMaterial color="orange" wireframe={true} />
+        </mesh>
         <OrbitControls />
       </Canvas>
     </div>
