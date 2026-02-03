@@ -2,7 +2,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useState, useEffect } from 'react';
 import { TextureLoader, Texture, RepeatWrapping } from 'three'; // Import RepeatWrapping
-import planetTextureUrl from './assets/planet_2d.png'; // Import the texture
+import planetTextureUrl from './assets/planets/Snowy/Snowy_02-512x512.png'; // Import the texture
 
 // Component for the textured sphere with safe loading
 function TexturedSphere() {
