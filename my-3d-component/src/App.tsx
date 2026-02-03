@@ -1,15 +1,17 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { TextureLoader, Texture } from 'three';
+import planetTextureUrl from './assets/planet_2d.png'; // Import the texture
 
 // Component for the textured sphere with safe loading
 function TexturedSphere() {
   const [texture, setTexture] = useState<Texture | null>(null);
 
   useEffect(() => {
+    // Use the imported URL
     new TextureLoader().load(
-      '/planet_2d.png',
+      planetTextureUrl,
       (loadedTexture) => {
         setTexture(loadedTexture);
       },
