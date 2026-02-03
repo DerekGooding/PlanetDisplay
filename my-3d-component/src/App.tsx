@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useState, useEffect } from 'react';
-import { TextureLoader, Texture } from 'three';
+import { TextureLoader, Texture, RepeatWrapping } from 'three'; // Import RepeatWrapping
 import planetTextureUrl from './assets/planet_2d.png'; // Import the texture
 
 // Component for the textured sphere with safe loading
@@ -13,6 +13,11 @@ function TexturedSphere() {
     new TextureLoader().load(
       planetTextureUrl,
       (loadedTexture) => {
+        // Apply texture transformations here
+        loadedTexture.wrapS = RepeatWrapping; // Repeat horizontally
+        loadedTexture.repeat.set(2, 1); // Repeat twice horizontally, once vertically
+        loadedTexture.needsUpdate = true; // Inform Three.js that the texture needs re-uploading
+
         setTexture(loadedTexture);
       },
       undefined, // onProgress callback not needed
@@ -26,7 +31,8 @@ function TexturedSphere() {
     <mesh position={[2.2, 0, 0]}>
       <sphereGeometry args={[2, 32, 32]} />
       {texture ? (
-        <meshStandardMaterial map={texture} transparent={true} />
+        // Switched back to MeshStandardMaterial with alphaTest for lighting and transparency
+        <meshStandardMaterial map={texture} transparent={true} alphaTest={0.5} color="white" />
       ) : (
         <meshStandardMaterial color="blue" wireframe={true} />
       )}
