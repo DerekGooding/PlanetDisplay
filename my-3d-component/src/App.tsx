@@ -7,10 +7,12 @@ import { TextureLoader, Texture, RepeatWrapping } from 'three';
 import planetTextures, { cloudTextures } from './utils/planetData';
 import { planets } from './data/planets';
 import { Planet as PlanetModel } from './models/Planet';
+import ScanMaterialComponent from './components/ScanMaterial';
 
 // Component for a textured sphere
-function TexturedSphere({ texturePath }: { texturePath: string }) {
+function TexturedSphere({ texturePath, isScanning }: { texturePath: string; isScanning: boolean; }) {
   const [texture, setTexture] = useState<Texture | null>(null);
+  const [localScanProgress, setLocalScanProgress] = useState(0);
 
   useEffect(() => {
     if (!texturePath) return;
@@ -32,11 +34,23 @@ function TexturedSphere({ texturePath }: { texturePath: string }) {
     );
   }, [texturePath]);
 
+  useFrame((_state, delta) => {
+    if (isScanning) {
+      setLocalScanProgress((prev) => (prev + delta * 0.1) % 2); // Adjust speed as needed
+    } else {
+      setLocalScanProgress(0); // Reset when not scanning
+    }
+  });
+
   return (
     <mesh>
       <sphereGeometry args={[2, 32, 32]} />
       {texture ? (
-        <meshStandardMaterial map={texture} transparent alphaTest={0.5} color="white" />
+        isScanning ? (
+            <ScanMaterialComponent map={texture} scanProgress={localScanProgress} isScanning={isScanning} scanLineColor={new THREE.Color(0.0, 1.0, 0.0)} />
+        ) : (
+          <meshStandardMaterial map={texture} transparent alphaTest={0.5} color="white" />
+        )
       ) : (
         <meshStandardMaterial color="blue" wireframe />
       )}
@@ -100,7 +114,8 @@ function PlanetComponent({
   position,
   onPointerOver,
   onPointerOut,
-  isHovered
+  isHovered,
+  isScanning
 }: {
   planet: PlanetModel;
   planetTexturePath: string;
@@ -109,6 +124,7 @@ function PlanetComponent({
   onPointerOver: (planet: PlanetModel) => void;
   onPointerOut: () => void;
   isHovered: boolean;
+  isScanning: boolean;
 }) {
   return (
     <Select enabled={isHovered}>
@@ -117,7 +133,7 @@ function PlanetComponent({
         onPointerOver={() => onPointerOver(planet)}
         onPointerOut={onPointerOut}
       >
-        <TexturedSphere texturePath={planetTexturePath} />
+        <TexturedSphere texturePath={planetTexturePath} isScanning={isScanning} />
         <CloudSphere texturePath={cloudTexturePath} />
       </group>
     </Select>
@@ -125,7 +141,7 @@ function PlanetComponent({
 }
 
 export default function App() {
-  const [currentPlanetIndex, setCurrentPlanetIndex] = useState(0);
+  const [currentPlanetIndex] = useState(0);
   const [targetPlanetIndex, setTargetPlanetIndex] = useState(0);
 
   const assignedPlanetTextures = useMemo(() => {
@@ -149,6 +165,7 @@ const assignedCloudTexture = useMemo(() => {
 }, []);
 
   const [hoveredPlanet, setHoveredPlanet] = useState<PlanetModel | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   const handlePointerOver = (planet: PlanetModel) => {
     setHoveredPlanet(planet);
@@ -229,8 +246,11 @@ function CameraAnimator() {
         <button onClick={nextPlanet} style={{ marginRight: '10px', padding: '8px 15px' }}>
           Next
         </button>
-        <button onClick={handleResetView} style={{ padding: '8px 15px' }}>
+        <button onClick={handleResetView} style={{ marginRight: '10px', padding: '8px 15px' }}>
           Reset View
+        </button>
+        <button onClick={() => setIsScanning(!isScanning)} style={{ padding: '8px 15px' }}>
+          {isScanning ? 'Stop Scan' : 'Start Scan'}
         </button>
       </div>
 
@@ -262,6 +282,7 @@ function CameraAnimator() {
               onPointerOver={handlePointerOver}
               onPointerOut={handlePointerOut}
               isHovered={hoveredPlanet?.id === planet.id} // Pass hovered state
+              isScanning={isScanning}
             />
           ))}
         </Selection>
