@@ -5,8 +5,10 @@ interface PlanetTexture {
 
 const modules = import.meta.glob('../assets/planets/**/*.png', { eager: true, as: 'url' });
 
-const planetTextures: PlanetTexture[] = Object.entries(modules).map(([key, value]) => {
-  const fullPath = value as string;
+const planetTextures: PlanetTexture[] = Object.entries(modules).map(([key, url]) => {
+  console.log('Processing:', key, '→', url);
+  const fullPath = url as string;
+
 
   const parts = key.split('/');
   const folderName = parts[parts.length - 2]; // e.g., 'Arid'
