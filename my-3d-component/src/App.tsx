@@ -138,10 +138,14 @@ export default function App() {
     return assigned;
   }, []);
 
-  const assignedCloudTexture = useMemo(() => {
-    const cloudPaths = Object.values(cloudTextures);
-    return cloudPaths[Math.floor(Math.random() * cloudPaths.length)] as string;
-  }, []);
+const assignedCloudTexture = useMemo(() => {
+  console.log('cloudTextures:', cloudTextures);
+  console.log('Object.values:', Object.values(cloudTextures));
+  const cloudPaths = Object.values(cloudTextures);
+  const selected = cloudPaths[Math.floor(Math.random() * cloudPaths.length)];
+  console.log('selected:', selected, typeof selected);
+  return selected as string;
+}, []);
 
   const [hoveredPlanet, setHoveredPlanet] = useState<PlanetModel | null>(null);
 
