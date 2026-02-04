@@ -1,7 +1,8 @@
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
+import { Selection, EffectComposer, Outline } from '@react-three/postprocessing'; // Added imports
 import { useState, useEffect, useRef, useMemo } from 'react';
-import * as THREE from 'three'; // Explicitly import THREE
+import * as THREE from 'three';
 import { TextureLoader, Texture, RepeatWrapping } from 'three';
 import planetTextures, { cloudTextures } from './utils/planetData';
 import { planets } from './data/planets'; // Import planets data
@@ -92,13 +93,16 @@ function CloudSphere({ texturePath, position }: { texturePath: string, position:
   );
 }
 
+import { Select } from '@react-three/postprocessing'; // Added Select import
+
 function PlanetComponent({
   planet,
   planetTexturePath,
   cloudTexturePath,
   position,
   onPointerOver,
-  onPointerOut
+  onPointerOut,
+  isHovered
 }: {
   planet: PlanetModel;
   planetTexturePath: string;
@@ -106,17 +110,32 @@ function PlanetComponent({
   position: [number, number, number];
   onPointerOver: (planet: PlanetModel) => void;
   onPointerOut: () => void;
+  isHovered: boolean;
 }) {
   return (
-    <group
-      position={position}
-      onPointerOver={() => onPointerOver(planet)}
-      onPointerOut={onPointerOut}
-    >
-      <TexturedSphere texturePath={planetTexturePath} position={[0, 0, 0]} />
-      <CloudSphere texturePath={cloudTexturePath} position={[0, 0, 0]} />
-    </group>
+    <Select enabled={isHovered}>
+      <group
+        position={position}
+        onPointerOver={() => onPointerOver(planet)}
+        onPointerOut={onPointerOut}
+      >
+        <TexturedSphere texturePath={planetTexturePath} position={[0, 0, 0]} />
+        <CloudSphere texturePath={cloudTexturePath} position={[0, 0, 0]} />
+      </group>
+    </Select>
   );
+}
+
+// Component to control camera movement
+function CameraRig({ currentPlanetIndex }: { currentPlanetIndex: number }) {
+  const { camera } = useThree();
+  const targetCameraX = currentPlanetIndex * 12;
+
+  useFrame(() => {
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCameraX, 0.05);
+  });
+
+  return null; // This component doesn't render anything visible itself
 }
 
 export default function App() {
@@ -148,16 +167,6 @@ export default function App() {
     setHoveredPlanet(null);
   };
 
-  const controlsRef = useRef<any>(null); // Ref for OrbitControls
-
-  useEffect(() => {
-    if (controlsRef.current) {
-      const targetX = currentPlanetIndex * 12;
-      controlsRef.current.target.set(targetX, 0, 0);
-      controlsRef.current.update();
-    }
-  }, [currentPlanetIndex]);
-
   const nextPlanet = () => {
     setCurrentPlanetIndex((prevIndex) => (prevIndex + 1) % planets.length);
   };
@@ -173,8 +182,11 @@ export default function App() {
         <button onClick={prevPlanet} style={{ marginRight: '10px', padding: '8px 15px' }}>
           Previous
         </button>
-        <button onClick={nextPlanet} style={{ padding: '8px 15px' }}>
+        <button onClick={nextPlanet} style={{ marginRight: '10px', padding: '8px 15px' }}>
           Next
+        </button>
+        <button onClick={() => setCurrentPlanetIndex(0)} style={{ padding: '8px 15px' }}>
+          Reset View
         </button>
       </div>
 
@@ -184,19 +196,32 @@ export default function App() {
         <directionalLight position={[5, 5, 5]} intensity={1} />
         <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade />
 
-        {planets.map((planet, index) => (
-          <PlanetComponent
-            key={planet.id}
-            planet={planet}
-            planetTexturePath={assignedPlanetTextures[planet.id]}
-            cloudTexturePath={assignedCloudTexture}
-            position={[index * 12, 0, 0]} // Arrange planets in a line
-            onPointerOver={handlePointerOver}
-            onPointerOut={handlePointerOut}
-          />
-        ))}
+        <Selection>
+          <EffectComposer multisampling={8} autoClear={false}>
+            <Outline blur
+              visibleEdgeColor={0xffff00} // Yellow
+              edgeStrength={100}
+              width={1000}
+              selectionLayer={10}
+            />
+          </EffectComposer>
 
-        <OrbitControls ref={controlsRef} />
+          {planets.map((planet, index) => (
+            <PlanetComponent
+              key={planet.id}
+              planet={planet}
+              planetTexturePath={assignedPlanetTextures[planet.id]}
+              cloudTexturePath={assignedCloudTexture}
+              position={[index * 12, 0, 0]} // Arrange planets in a line
+              onPointerOver={handlePointerOver}
+              onPointerOut={handlePointerOut}
+              isHovered={hoveredPlanet?.id === planet.id} // Pass hovered state
+            />
+          ))}
+        </Selection>
+
+        <OrbitControls enableRotate={false} enablePan={true} enableZoom={true} />
+        <CameraRig currentPlanetIndex={currentPlanetIndex} />
       </Canvas>
 
       {hoveredPlanet && (
