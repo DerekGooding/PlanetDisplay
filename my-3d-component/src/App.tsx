@@ -1,11 +1,14 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import * as THREE from 'three'; // Explicitly import THREE
 import { TextureLoader, Texture, RepeatWrapping } from 'three';
-import planetTextures, { cloudTextures } from './utils/planetData'; // glob-imported URLs
+import planetTextures, { cloudTextures } from './utils/planetData';
+import { planets } from './data/planets'; // Import planets data
+import { Planet as PlanetModel } from './models/Planet'; // Import Planet model
 
 // Component for a textured sphere
-function TexturedSphere({ texturePath }: { texturePath: string }) {
+function TexturedSphere({ texturePath, position }: { texturePath: string, position: [number, number, number] }) {
   const [texture, setTexture] = useState<Texture | null>(null);
 
   useEffect(() => {
@@ -29,7 +32,7 @@ function TexturedSphere({ texturePath }: { texturePath: string }) {
   }, [texturePath]);
 
   return (
-    <mesh position={[2.2, 0, 0]}>
+    <mesh position={position}>
       <sphereGeometry args={[2, 32, 32]} />
       {texture ? (
         <meshStandardMaterial map={texture} transparent alphaTest={0.5} color="white" />
@@ -40,59 +43,10 @@ function TexturedSphere({ texturePath }: { texturePath: string }) {
   );
 }
 
-export default function App() {
-  // Store the currently selected texture URL (string)
-  const [selectedTexture, setSelectedTexture] = useState<string>(planetTextures[0]?.path || '');
-
-  const handlePlanetChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedTexture(event.target.value); // Always a string URL
-  };
-
-  return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      {/* Dropdown to select planet */}
-      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100 }}>
-        <select
-          onChange={handlePlanetChange}
-          value={selectedTexture}
-          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-        >
-          {planetTextures.map((planet, index) => (
-            <option key={index} value={planet.path}>
-              {planet.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <Canvas camera={{ position: [0, 0, 8] }}>
-        <color attach="background" args={['#333']} />
-        <ambientLight intensity={1.5} />
-        <directionalLight position={[5, 5, 5]} intensity={1} />
-        <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade />
-
-        {/* Left wireframe sphere */}
-        <mesh position={[-2.2, 0, 0]}>
-          <sphereGeometry args={[2, 32, 32]} />
-          <meshStandardMaterial color="orange" wireframe />
-        </mesh>
-
-        {/* Right sphere: loads selected planet texture */}
-        <TexturedSphere texturePath={selectedTexture} />
-
-        {/* Clouds for the selected planet */}
-        <CloudSphere texturePath={Object.values(cloudTextures)[0] as string} />
-
-        <OrbitControls />
-      </Canvas>clouds
-    </div>
-  );
-}
-
 // Component for rendering clouds
-function CloudSphere({ texturePath }: { texturePath: string }) {
+function CloudSphere({ texturePath, position }: { texturePath: string, position: [number, number, number] }) {
   const [texture, setTexture] = useState<Texture | null>(null);
-  const meshRef = useRef<THREE.Mesh>(null!); // Ref for the mesh
+  const meshRef = useRef<THREE.Mesh>(null!);
 
   useEffect(() => {
     if (!texturePath) return;
@@ -114,27 +68,159 @@ function CloudSphere({ texturePath }: { texturePath: string }) {
     );
   }, [texturePath]);
 
-  // Rotate the mesh on each frame
   useFrame(() => {
     if (meshRef.current) {
-      meshRef.current.rotation.y += 0.001; // Adjust rotation speed here
+      meshRef.current.rotation.y += 0.001;
     }
   });
 
   return (
-    <mesh position={[2.2, 0, 0]} ref={meshRef}> {/* Added ref */}
-      <sphereGeometry args={[2.03, 32, 32]} /> {/* Slightly larger than the planet */}
+    <mesh position={[0, 0, 0]} ref={meshRef}>
+      <sphereGeometry args={[2.03, 32, 32]} />
       {texture ? (
         <meshStandardMaterial
           map={texture}
           transparent
-          opacity={0.75} // Adjusted opacity
-          alphaTest={0.01} // Helps with transparent pngs
-          color={0xffffff} // Explicitly set color to white
+          opacity={0.75}
+          alphaTest={0.01}
+          color={0xffffff}
         />
       ) : (
         <meshStandardMaterial color="lightgray" wireframe />
       )}
     </mesh>
+  );
+}
+
+function PlanetComponent({
+  planet,
+  planetTexturePath,
+  cloudTexturePath,
+  position,
+  onPointerOver,
+  onPointerOut
+}: {
+  planet: PlanetModel;
+  planetTexturePath: string;
+  cloudTexturePath: string;
+  position: [number, number, number];
+  onPointerOver: (planet: PlanetModel) => void;
+  onPointerOut: () => void;
+}) {
+  return (
+    <group
+      position={position}
+      onPointerOver={() => onPointerOver(planet)}
+      onPointerOut={onPointerOut}
+    >
+      <TexturedSphere texturePath={planetTexturePath} position={[0, 0, 0]} />
+      <CloudSphere texturePath={cloudTexturePath} position={[0, 0, 0]} />
+    </group>
+  );
+}
+
+export default function App() {
+  const [currentPlanetIndex, setCurrentPlanetIndex] = useState(0);
+
+  const assignedPlanetTextures = useMemo(() => {
+    const assigned: { [key: string]: string } = {};
+    planets.forEach(planet => {
+      if (!assigned[planet.id]) {
+        const randomIndex = Math.floor(Math.random() * planetTextures.length);
+        assigned[planet.id] = planetTextures[randomIndex].path;
+      }
+    });
+    return assigned;
+  }, []);
+
+  const assignedCloudTexture = useMemo(() => {
+    const cloudPaths = Object.values(cloudTextures);
+    return cloudPaths[Math.floor(Math.random() * cloudPaths.length)] as string;
+  }, []);
+
+  const [hoveredPlanet, setHoveredPlanet] = useState<PlanetModel | null>(null);
+
+  const handlePointerOver = (planet: PlanetModel) => {
+    setHoveredPlanet(planet);
+  };
+
+  const handlePointerOut = () => {
+    setHoveredPlanet(null);
+  };
+
+  const controlsRef = useRef<any>(null); // Ref for OrbitControls
+
+  useEffect(() => {
+    if (controlsRef.current) {
+      const targetX = currentPlanetIndex * 12;
+      controlsRef.current.target.set(targetX, 0, 0);
+      controlsRef.current.update();
+    }
+  }, [currentPlanetIndex]);
+
+  const nextPlanet = () => {
+    setCurrentPlanetIndex((prevIndex) => (prevIndex + 1) % planets.length);
+  };
+
+  const prevPlanet = () => {
+    setCurrentPlanetIndex((prevIndex) => (prevIndex - 1 + planets.length) % planets.length);
+  };
+
+  return (
+    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      {/* Navigation UI */}
+      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 100 }}>
+        <button onClick={prevPlanet} style={{ marginRight: '10px', padding: '8px 15px' }}>
+          Previous
+        </button>
+        <button onClick={nextPlanet} style={{ padding: '8px 15px' }}>
+          Next
+        </button>
+      </div>
+
+      <Canvas camera={{ position: [currentPlanetIndex * 12, 0, 8] }}>
+        <color attach="background" args={['#333']} />
+        <ambientLight intensity={1.5} />
+        <directionalLight position={[5, 5, 5]} intensity={1} />
+        <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade />
+
+        {planets.map((planet, index) => (
+          <PlanetComponent
+            key={planet.id}
+            planet={planet}
+            planetTexturePath={assignedPlanetTextures[planet.id]}
+            cloudTexturePath={assignedCloudTexture}
+            position={[index * 12, 0, 0]} // Arrange planets in a line
+            onPointerOver={handlePointerOver}
+            onPointerOut={handlePointerOut}
+          />
+        ))}
+
+        <OrbitControls ref={controlsRef} />
+      </Canvas>
+
+      {hoveredPlanet && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 10,
+            left: 10,
+            zIndex: 100,
+            background: 'rgba(0,0,0,0.7)',
+            color: 'white',
+            padding: '10px',
+            borderRadius: '5px',
+            maxWidth: '300px',
+          }}
+        >
+          <h3>{hoveredPlanet.name}</h3>
+          <p><strong>Classification:</strong> {hoveredPlanet.classification}</p>
+          <p><strong>Allegiance:</strong> {hoveredPlanet.allegiance}</p>
+          <p><strong>Biome:</strong> {hoveredPlanet.biome}</p>
+          <p><strong>Threat Level:</strong> {hoveredPlanet.threatLevel}</p>
+          <p>{hoveredPlanet.flavorText}</p>
+        </div>
+      )}
+    </div>
   );
 }
