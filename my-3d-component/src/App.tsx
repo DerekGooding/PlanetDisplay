@@ -210,13 +210,24 @@ export default function App() {
 
   // Generate orbital parameters for each planet
   const generateOrbitalParameters = useCallback(() => {
-    return planets.map((_, index) => ({
-      orbitalRadius: 10 + index * 5 + Math.random() * 5, // Increase radius for each planet, add some randomness
-      orbitalSpeed: 0.05 + Math.random() * 0.05, // Randomize speed
-      initialOrbitalAngle: Math.random() * Math.PI * 2, // Random initial angle
-      planetSize: 2 + Math.random(), // Random planet size
-      rotationSpeed: 0.005 + Math.random() * 0.01 // Random self-rotation speed
-    }));
+    return planets.map((_, index) => {
+      const baseOrbitalRadius = 25 + index * 10; // Base distance for each planet
+      const orbitalRadius = baseOrbitalRadius + Math.random() * 15; // Wider randomized range
+      
+      const basePlanetSize = 2;
+      //const planetSize = basePlanetSize * (1 + (Math.random() * 0.4 - 0.2)); // +/- 20% randomization
+      const planetSize = basePlanetSize * (1 + (Math.random() * 1.0 - 0.5)); // +/- 50%
+
+      const rotationSpeed = 0.0001 + Math.random() * 0.0005; // Very slow, non-zero rotation
+
+      return {
+        orbitalRadius,
+        orbitalSpeed: 0.01 + Math.random() * 0.03, // Adjusted speed
+        initialOrbitalAngle: Math.random() * Math.PI * 2,
+        planetSize,
+        rotationSpeed
+      };
+    });
   }, []);
 
   const [orbitalParameters, setOrbitalParameters] = useState(() => generateOrbitalParameters());
