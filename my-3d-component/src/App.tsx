@@ -1,7 +1,7 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { Selection, EffectComposer, Outline, Select } from '@react-three/postprocessing';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { TextureLoader, Texture, RepeatWrapping } from 'three';
 import planetTextures, { cloudTextures } from './utils/planetData';
@@ -59,7 +59,7 @@ function TexturedSphere({ texturePath, isScanning }: { texturePath: string; isSc
 }
 
 // Component for rendering clouds
-function CloudSphere({ texturePath }: { texturePath: string }) {
+function CloudSphere({ texturePath, isParentPlanetScanning }: { texturePath: string; isParentPlanetScanning: boolean }) {
   const [texture, setTexture] = useState<Texture | null>(null);
   const meshRef = useRef<THREE.Mesh>(null!);
 
@@ -89,6 +89,10 @@ function CloudSphere({ texturePath }: { texturePath: string }) {
     }
   });
 
+  if (isParentPlanetScanning) {
+    return null; // Hide clouds during scan
+  }
+
   return (
     <mesh position={[0, 0, 0]} ref={meshRef}>
       <sphereGeometry args={[2.03, 32, 32]} />
@@ -115,7 +119,9 @@ function PlanetComponent({
   onPointerOver,
   onPointerOut,
   isHovered,
-  isScanning
+  isScanning,
+  index, // Add index
+  targetPlanetIndex // Add targetPlanetIndex
 }: {
   planet: PlanetModel;
   planetTexturePath: string;
@@ -125,7 +131,11 @@ function PlanetComponent({
   onPointerOut: () => void;
   isHovered: boolean;
   isScanning: boolean;
+  index: number; // Define index type
+  targetPlanetIndex: number; // Define targetPlanetIndex type
 }) {
+  const isTargetPlanet = index === targetPlanetIndex; // Determine if this is the target planet
+
   return (
     <Select enabled={isHovered}>
       <group
@@ -133,8 +143,8 @@ function PlanetComponent({
         onPointerOver={() => onPointerOver(planet)}
         onPointerOut={onPointerOut}
       >
-        <TexturedSphere texturePath={planetTexturePath} isScanning={isScanning} />
-        <CloudSphere texturePath={cloudTexturePath} />
+        <TexturedSphere texturePath={planetTexturePath} isScanning={isScanning && isTargetPlanet} />
+        <CloudSphere texturePath={cloudTexturePath} isParentPlanetScanning={isScanning && isTargetPlanet} />
       </group>
     </Select>
   );
@@ -144,28 +154,30 @@ export default function App() {
   const [currentPlanetIndex] = useState(0);
   const [targetPlanetIndex, setTargetPlanetIndex] = useState(0);
 
-  const assignedPlanetTextures = useMemo(() => {
-    const assigned: { [key: string]: string } = {};
+  const generateRandomTextures = useCallback(() => {
+    const newAssignedPlanetTextures: { [key: string]: string } = {};
     planets.forEach(planet => {
-      if (!assigned[planet.id]) {
-        const randomIndex = Math.floor(Math.random() * planetTextures.length);
-        assigned[planet.id] = planetTextures[randomIndex].path;
-      }
+      newAssignedPlanetTextures[planet.id] = planetTextures[Math.floor(Math.random() * planetTextures.length)].path;
     });
-    return assigned;
+
+    const cloudPaths = Object.values(cloudTextures);
+    const newAssignedCloudTexture = cloudPaths[Math.floor(Math.random() * cloudPaths.length)] as string;
+
+    return { newAssignedPlanetTextures, newAssignedCloudTexture };
   }, []);
 
-const assignedCloudTexture = useMemo(() => {
-  console.log('cloudTextures:', cloudTextures);
-  console.log('Object.values:', Object.values(cloudTextures));
-  const cloudPaths = Object.values(cloudTextures);
-  const selected = cloudPaths[Math.floor(Math.random() * cloudPaths.length)];
-  console.log('selected:', selected, typeof selected);
-  return selected as string;
-}, []);
+  const [assignedTextures, setAssignedTextures] = useState(() => generateRandomTextures());
+
+  const assignedPlanetTextures = assignedTextures.newAssignedPlanetTextures;
+  const assignedCloudTexture = assignedTextures.newAssignedCloudTexture;
+
+  const randomizeTextures = () => {
+    setAssignedTextures(generateRandomTextures());
+  };
 
   const [hoveredPlanet, setHoveredPlanet] = useState<PlanetModel | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isCameraLocked, setIsCameraLocked] = useState(true); // New state for camera lock
 
   const handlePointerOver = (planet: PlanetModel) => {
     setHoveredPlanet(planet);
@@ -179,7 +191,7 @@ const assignedCloudTexture = useMemo(() => {
 
 function CameraAnimator() {
     useFrame(() => {
-      if (controlsRef.current) {
+      if (isCameraLocked && controlsRef.current) { // Only animate if camera is locked
         const targetPlanetX = targetPlanetIndex * 12;
         const cameraDistanceFromTarget = 8;
 
@@ -252,7 +264,36 @@ function CameraAnimator() {
         <button onClick={() => setIsScanning(!isScanning)} style={{ padding: '8px 15px' }}>
           {isScanning ? 'Stop Scan' : 'Start Scan'}
         </button>
+        <button onClick={() => setIsCameraLocked(!isCameraLocked)} style={{ marginLeft: '10px', padding: '8px 15px' }}>
+          {isCameraLocked ? 'Unlock Camera' : 'Lock Camera'}
+        </button>
+        <button onClick={randomizeTextures} style={{ marginLeft: '10px', padding: '8px 15px' }}>
+          Randomize Textures
+        </button>
       </div>
+
+      {/* Camera Controls Help Box */}
+      {!isCameraLocked && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            zIndex: 100,
+            background: 'rgba(0,0,0,0.7)',
+            color: 'white',
+            padding: '10px',
+            borderRadius: '5px',
+            maxWidth: '200px',
+            fontSize: '14px',
+          }}
+        >
+          <p><strong>Free Look Controls:</strong></p>
+          <p>Left Click + Drag: Rotate</p>
+          <p>Right Click + Drag: Pan</p>
+          <p>Scroll: Zoom</p>
+        </div>
+      )}
 
       <Canvas camera={{ position: [currentPlanetIndex * 12, 0, 8] }}>
         <color attach="background" args={['#333']} />
@@ -283,14 +324,16 @@ function CameraAnimator() {
               onPointerOut={handlePointerOut}
               isHovered={hoveredPlanet?.id === planet.id} // Pass hovered state
               isScanning={isScanning}
+              index={index}
+              targetPlanetIndex={targetPlanetIndex}
             />
           ))}
         </Selection>
 
         <OrbitControls
           ref={controlsRef}
-          enableRotate={false}
-          enablePan={true}
+          enableRotate={!isCameraLocked}
+          enablePan={!isCameraLocked}
           enableZoom={true}
         />
       </Canvas>
