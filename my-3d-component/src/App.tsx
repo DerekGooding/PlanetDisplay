@@ -2,9 +2,9 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useState, useEffect } from 'react';
 import { TextureLoader, Texture, RepeatWrapping } from 'three';
-import planetTextures from './utils/planetData'; // your glob-imported textures
+import planetTextures from './utils/planetData'; // glob-imported URLs
 
-// TexturedSphere loads a texture via TextureLoader safely
+// Component for a textured sphere
 function TexturedSphere({ texturePath }: { texturePath: string }) {
   const [texture, setTexture] = useState<Texture | null>(null);
 
@@ -23,7 +23,7 @@ function TexturedSphere({ texturePath }: { texturePath: string }) {
       },
       undefined,
       (error) => {
-        console.error('Texture load error:', error);
+        console.error('Error loading texture:', error);
       }
     );
   }, [texturePath]);
@@ -32,40 +32,30 @@ function TexturedSphere({ texturePath }: { texturePath: string }) {
     <mesh position={[2.2, 0, 0]}>
       <sphereGeometry args={[2, 32, 32]} />
       {texture ? (
-        <meshStandardMaterial
-          map={texture}
-          transparent={true}
-          alphaTest={0.5}
-          color="white"
-        />
+        <meshStandardMaterial map={texture} transparent alphaTest={0.5} color="white" />
       ) : (
-        <meshStandardMaterial color="blue" wireframe={true} />
+        <meshStandardMaterial color="blue" wireframe />
       )}
     </mesh>
   );
 }
 
 export default function App() {
-  // Store selected texture URL (string from planetTextures.path)
-  const [selectedTexture, setSelectedTexture] = useState(planetTextures[0]?.path || '');
+  // Store the currently selected texture URL (string)
+  const [selectedTexture, setSelectedTexture] = useState<string>(planetTextures[0]?.path || '');
 
   const handlePlanetChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value;
-    setSelectedTexture(value);
+    setSelectedTexture(event.target.value); // Always a string URL
   };
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      {/* Dropdown for selecting planet */}
+      {/* Dropdown to select planet */}
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100 }}>
         <select
           onChange={handlePlanetChange}
           value={selectedTexture}
-          style={{
-            padding: '8px',
-            borderRadius: '4px',
-            border: '1px solid #ccc',
-          }}
+          style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
         >
           {planetTextures.map((planet, index) => (
             <option key={index} value={planet.path}>
@@ -80,10 +70,10 @@ export default function App() {
         <ambientLight intensity={1.5} />
         <directionalLight position={[5, 5, 5]} intensity={1} />
 
-        {/* Left wireframe sphere (static example) */}
+        {/* Left wireframe sphere */}
         <mesh position={[-2.2, 0, 0]}>
           <sphereGeometry args={[2, 32, 32]} />
-          <meshStandardMaterial color="orange" wireframe={true} />
+          <meshStandardMaterial color="orange" wireframe />
         </mesh>
 
         {/* Right sphere: loads selected planet texture */}
