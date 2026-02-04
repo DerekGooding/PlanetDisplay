@@ -1,7 +1,7 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { Selection, EffectComposer, Outline, Select } from '@react-three/postprocessing';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { TextureLoader, Texture, RepeatWrapping } from 'three';
 import planetTextures, { cloudTextures } from './utils/planetData';
@@ -175,6 +175,16 @@ function PlanetComponent({
         <CloudSphere texturePath={cloudTexturePath} isParentPlanetScanning={isScanning && isTargetPlanet} planetSize={planetSize} />
       </group>
     </Select>
+  );
+}
+
+// Component for depicting a planet's orbit
+function OrbitRing({ orbitalRadius }: { orbitalRadius: number }) {
+  return (
+    <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]}> {/* Rotate to lie on the XZ plane */}
+      <ringGeometry args={[orbitalRadius - 0.2, orbitalRadius + 0.2, 64]} /> {/* innerRadius, outerRadius, thetaSegments */}
+      <meshBasicMaterial color="white" side={THREE.DoubleSide} transparent opacity={0.6} />
+    </mesh>
   );
 }
 
@@ -398,6 +408,13 @@ function CameraAnimator() {
               />
             );
           })}
+          {planets.map((planet, index) => {
+            const params = orbitalParameters[index];
+            return (
+              hoveredPlanet?.id === planet.id && <OrbitRing key={`orbit-${planet.id}`} orbitalRadius={params.orbitalRadius} />
+            );
+          })}
+
         </Selection>
 
         <OrbitControls
