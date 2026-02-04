@@ -1,26 +1,14 @@
-
 interface PlanetTexture {
   name: string;
-  path: string; // Absolute path for loading
+  path: string; // This should be the full URL provided by Vite, including base path and hash
 }
 
-// Vite's base URL (should match vite.config.ts)
-const BASE_URL = import.meta.env.BASE_URL || '/'; // Fallback to '/' if not defined
-
 // Use Vite's glob import feature to get all PNGs from the planets folder
-// We'll import them as strings for now, and construct the full URL later
-const modules = import.meta.glob('../assets/planets/**/*.png', { eager: true, as: 'raw' });
+// 'eager: true' imports them immediately, and 'as: "url"' gets their public URL with hash
+const modules = import.meta.glob('../assets/planets/**/*.png', { eager: true, as: 'url' });
 
 const planetTextures: PlanetTexture[] = Object.keys(modules).map((key: string) => {
-  // key will be like '../assets/planets/Arid/Arid_01-512x512.png'
-  const relativePath = key.replace('../', ''); // Removes the '../' prefix
-
-  // Ensure BASE_URL ends with a slash and relativePath does not start with one
-  const cleanBaseUrl = BASE_URL.endsWith('/') ? BASE_URL : `${BASE_URL}/`;
-  const cleanRelativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
-
-  // Construct the full absolute URL for the asset
-  const fullPath = `${cleanBaseUrl}${cleanRelativePath}`; // Prepend the base URL
+  const fullPath = modules[key] as string; // This should now correctly be the full public URL
 
   // Extract folderName and fileName for a user-friendly name
   const parts = key.split('/');
