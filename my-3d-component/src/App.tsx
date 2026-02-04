@@ -1,7 +1,7 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { Selection, EffectComposer, Outline, Select } from '@react-three/postprocessing';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { TextureLoader, Texture, RepeatWrapping } from 'three';
 import planetTextures, { cloudTextures } from './utils/planetData';
@@ -9,8 +9,18 @@ import { planets } from './data/planets';
 import { Planet as PlanetModel } from './models/Planet';
 import ScanMaterialComponent from './components/ScanMaterial';
 
+// Component for the central star
+function Star() {
+  return (
+    <mesh position={[0, 0, 0]}>
+      <sphereGeometry args={[5, 32, 32]} /> {/* Larger sphere for the star */}
+      <meshBasicMaterial color="yellow" /> {/* Solid yellow color */}
+    </mesh>
+  );
+}
+
 // Component for a textured sphere
-function TexturedSphere({ texturePath, isScanning }: { texturePath: string; isScanning: boolean; }) {
+function TexturedSphere({ texturePath, isScanning, planetSize }: { texturePath: string; isScanning: boolean; planetSize: number }) {
   const [texture, setTexture] = useState<Texture | null>(null);
   const [localScanProgress, setLocalScanProgress] = useState(0);
 
@@ -44,7 +54,7 @@ function TexturedSphere({ texturePath, isScanning }: { texturePath: string; isSc
 
   return (
     <mesh>
-      <sphereGeometry args={[2, 32, 32]} />
+      <sphereGeometry args={[planetSize, 32, 32]} />
       {texture ? (
         isScanning ? (
             <ScanMaterialComponent map={texture} scanProgress={localScanProgress} isScanning={isScanning} scanLineColor={new THREE.Color(0.0, 1.0, 0.0)} />
@@ -59,7 +69,7 @@ function TexturedSphere({ texturePath, isScanning }: { texturePath: string; isSc
 }
 
 // Component for rendering clouds
-function CloudSphere({ texturePath, isParentPlanetScanning }: { texturePath: string; isParentPlanetScanning: boolean }) {
+function CloudSphere({ texturePath, isParentPlanetScanning, planetSize }: { texturePath: string; isParentPlanetScanning: boolean, planetSize: number }) {
   const [texture, setTexture] = useState<Texture | null>(null);
   const meshRef = useRef<THREE.Mesh>(null!);
 
@@ -95,7 +105,7 @@ function CloudSphere({ texturePath, isParentPlanetScanning }: { texturePath: str
 
   return (
     <mesh position={[0, 0, 0]} ref={meshRef}>
-      <sphereGeometry args={[2.03, 32, 32]} />
+      <sphereGeometry args={[planetSize + 0.03, 32, 32]} /> {/* Slightly larger than planet */}
       {texture ? (
         <meshStandardMaterial
           map={texture}
@@ -115,43 +125,60 @@ function PlanetComponent({
   planet,
   planetTexturePath,
   cloudTexturePath,
-  position,
   onPointerOver,
   onPointerOut,
   isHovered,
   isScanning,
-  index, // Add index
-  targetPlanetIndex // Add targetPlanetIndex
+  index,
+  targetPlanetIndex,
+  orbitalRadius,
+  orbitalSpeed,
+  initialOrbitalAngle,
+  planetSize,
+  rotationSpeed
 }: {
   planet: PlanetModel;
   planetTexturePath: string;
   cloudTexturePath: string;
-  position: [number, number, number];
   onPointerOver: (planet: PlanetModel) => void;
   onPointerOut: () => void;
   isHovered: boolean;
   isScanning: boolean;
-  index: number; // Define index type
-  targetPlanetIndex: number; // Define targetPlanetIndex type
+  index: number;
+  targetPlanetIndex: number;
+  orbitalRadius: number;
+  orbitalSpeed: number;
+  initialOrbitalAngle: number;
+  planetSize: number;
+  rotationSpeed: number;
 }) {
-  const isTargetPlanet = index === targetPlanetIndex; // Determine if this is the target planet
+  const isTargetPlanet = index === targetPlanetIndex;
+  const planetRef = useRef<THREE.Group>(null!);
+
+  useFrame(({ clock }) => {
+    if (planetRef.current) {
+      const angle = initialOrbitalAngle + clock.getElapsedTime() * orbitalSpeed;
+      planetRef.current.position.x = orbitalRadius * Math.sin(angle);
+      planetRef.current.position.z = orbitalRadius * Math.cos(angle);
+      planetRef.current.rotation.y += rotationSpeed; // Self-rotation
+    }
+  });
 
   return (
     <Select enabled={isHovered}>
       <group
-        position={position}
+        ref={planetRef}
         onPointerOver={() => onPointerOver(planet)}
         onPointerOut={onPointerOut}
       >
-        <TexturedSphere texturePath={planetTexturePath} isScanning={isScanning && isTargetPlanet} />
-        <CloudSphere texturePath={cloudTexturePath} isParentPlanetScanning={isScanning && isTargetPlanet} />
+        <TexturedSphere texturePath={planetTexturePath} isScanning={isScanning && isTargetPlanet} planetSize={planetSize} />
+        <CloudSphere texturePath={cloudTexturePath} isParentPlanetScanning={isScanning && isTargetPlanet} planetSize={planetSize} />
       </group>
     </Select>
   );
 }
 
 export default function App() {
-  const [currentPlanetIndex] = useState(0);
   const [targetPlanetIndex, setTargetPlanetIndex] = useState(0);
 
   const generateRandomTextures = useCallback(() => {
@@ -173,11 +200,26 @@ export default function App() {
 
   const randomizeTextures = () => {
     setAssignedTextures(generateRandomTextures());
+    // Also regenerate orbital parameters to make it dynamic
+    setOrbitalParameters(generateOrbitalParameters());
   };
 
   const [hoveredPlanet, setHoveredPlanet] = useState<PlanetModel | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [isCameraLocked, setIsCameraLocked] = useState(true); // New state for camera lock
+  const [isCameraLocked, setIsCameraLocked] = useState(true);
+
+  // Generate orbital parameters for each planet
+  const generateOrbitalParameters = useCallback(() => {
+    return planets.map((_, index) => ({
+      orbitalRadius: 10 + index * 5 + Math.random() * 5, // Increase radius for each planet, add some randomness
+      orbitalSpeed: 0.05 + Math.random() * 0.05, // Randomize speed
+      initialOrbitalAngle: Math.random() * Math.PI * 2, // Random initial angle
+      planetSize: 2 + Math.random(), // Random planet size
+      rotationSpeed: 0.005 + Math.random() * 0.01 // Random self-rotation speed
+    }));
+  }, []);
+
+  const [orbitalParameters, setOrbitalParameters] = useState(() => generateOrbitalParameters());
 
   const handlePointerOver = (planet: PlanetModel) => {
     setHoveredPlanet(planet);
@@ -190,10 +232,15 @@ export default function App() {
   const controlsRef = useRef<any>(null);
 
 function CameraAnimator() {
-    useFrame(() => {
-      if (isCameraLocked && controlsRef.current) { // Only animate if camera is locked
-        const targetPlanetX = targetPlanetIndex * 12;
-        const cameraDistanceFromTarget = 8;
+    useFrame(({ clock }) => {
+      if (isCameraLocked && controlsRef.current) {
+        const targetPlanetParams = orbitalParameters[targetPlanetIndex];
+        // Calculate the target planet's current angle based on elapsed time
+        const angle = targetPlanetParams.initialOrbitalAngle + (clock.getElapsedTime() * targetPlanetParams.orbitalSpeed);
+        const targetPlanetX = targetPlanetParams.orbitalRadius * Math.sin(angle);
+        const targetPlanetZ = targetPlanetParams.orbitalRadius * Math.cos(angle);
+        
+        const cameraDistanceFromTarget = targetPlanetParams.planetSize * 4; // Adjust distance based on planet size
 
         // Smoothly interpolate the target's position
         controlsRef.current.target.x = THREE.MathUtils.lerp(
@@ -208,7 +255,7 @@ function CameraAnimator() {
         );
         controlsRef.current.target.z = THREE.MathUtils.lerp(
           controlsRef.current.target.z,
-          0,
+          targetPlanetZ,
           0.1
         );
 
@@ -220,12 +267,12 @@ function CameraAnimator() {
         );
         controlsRef.current.object.position.y = THREE.MathUtils.lerp(
           controlsRef.current.object.position.y,
-          0,
+          cameraDistanceFromTarget / 2, // Slightly above the planet
           0.1
         );
         controlsRef.current.object.position.z = THREE.MathUtils.lerp(
           controlsRef.current.object.position.z,
-          cameraDistanceFromTarget,
+          targetPlanetZ + cameraDistanceFromTarget, // Offset from the planet
           0.1
         );
 
@@ -245,7 +292,10 @@ function CameraAnimator() {
   };
 
   const handleResetView = () => {
-    setTargetPlanetIndex(0);
+    setTargetPlanetIndex(0); // Reset to the first planet
+    setIsCameraLocked(true); // Re-lock camera to focus on the first planet
+    // Also reset orbital parameters if desired, or let them continue
+    setOrbitalParameters(generateOrbitalParameters());
   };
 
   return (
@@ -268,7 +318,7 @@ function CameraAnimator() {
           {isCameraLocked ? 'Unlock Camera' : 'Lock Camera'}
         </button>
         <button onClick={randomizeTextures} style={{ marginLeft: '10px', padding: '8px 15px' }}>
-          Randomize Textures
+          Randomize System
         </button>
       </div>
 
@@ -295,11 +345,13 @@ function CameraAnimator() {
         </div>
       )}
 
-      <Canvas camera={{ position: [currentPlanetIndex * 12, 0, 8] }}>
+      <Canvas camera={{ position: [0, 20, 30], fov: 60 }}>
         <color attach="background" args={['#333']} />
-        <ambientLight intensity={1.5} />
-        <directionalLight position={[5, 5, 5]} intensity={1} />
+        <ambientLight intensity={0.5} /> {/* Reduced ambient light */}
+        <pointLight position={[0, 0, 0]} intensity={100} decay={2} color="white" /> {/* Light from the star */}
         <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade />
+
+        <Star /> {/* Render the central star */}
 
         <CameraAnimator />
         
@@ -313,21 +365,28 @@ function CameraAnimator() {
             />
           </EffectComposer>
 
-          {planets.map((planet, index) => (
-            <PlanetComponent
-              key={planet.id}
-              planet={planet}
-              planetTexturePath={assignedPlanetTextures[planet.id]}
-              cloudTexturePath={assignedCloudTexture}
-              position={[index * 12, 0, 0]} // Arrange planets in a line
-              onPointerOver={handlePointerOver}
-              onPointerOut={handlePointerOut}
-              isHovered={hoveredPlanet?.id === planet.id} // Pass hovered state
-              isScanning={isScanning}
-              index={index}
-              targetPlanetIndex={targetPlanetIndex}
-            />
-          ))}
+          {planets.map((planet, index) => {
+            const params = orbitalParameters[index];
+            return (
+              <PlanetComponent
+                key={planet.id}
+                planet={planet}
+                planetTexturePath={assignedPlanetTextures[planet.id]}
+                cloudTexturePath={assignedCloudTexture}
+                onPointerOver={handlePointerOver}
+                onPointerOut={handlePointerOut}
+                isHovered={hoveredPlanet?.id === planet.id}
+                isScanning={isScanning}
+                index={index}
+                targetPlanetIndex={targetPlanetIndex}
+                orbitalRadius={params.orbitalRadius}
+                orbitalSpeed={params.orbitalSpeed}
+                initialOrbitalAngle={params.initialOrbitalAngle}
+                planetSize={params.planetSize}
+                rotationSpeed={params.rotationSpeed}
+              />
+            );
+          })}
         </Selection>
 
         <OrbitControls
