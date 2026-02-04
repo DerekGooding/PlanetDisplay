@@ -1,16 +1,13 @@
 interface PlanetTexture {
   name: string;
-  path: string; // This should be the full URL provided by Vite, including base path and hash
+  path: string;
 }
 
-// Use Vite's glob import feature to get all PNGs from the planets folder
-// 'eager: true' imports them immediately, and 'as: "url"' gets their public URL with hash
 const modules = import.meta.glob('../assets/planets/**/*.png', { eager: true, as: 'url' });
 
-const planetTextures: PlanetTexture[] = Object.keys(modules).map((key: string) => {
-  const fullPath = modules[key] as string; // This should now correctly be the full public URL
+const planetTextures: PlanetTexture[] = Object.entries(modules).map(([key, value]) => {
+  const fullPath = value as string;
 
-  // Extract folderName and fileName for a user-friendly name
   const parts = key.split('/');
   const folderName = parts[parts.length - 2]; // e.g., 'Arid'
   const fileNameWithExt = parts[parts.length - 1]; // e.g., 'Arid_01-512x512.png'
