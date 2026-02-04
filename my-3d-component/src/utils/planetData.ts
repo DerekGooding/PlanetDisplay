@@ -27,3 +27,5 @@ const planetTextures: PlanetTexture[] = Object.entries(modules).map(([key, url])
 });
 
 export default planetTextures;
+
+export const cloudTextures = import.meta.glob('../assets/clouds/**/*.png', { eager: true, as: 'url' });

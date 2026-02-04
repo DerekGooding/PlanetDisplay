@@ -1,8 +1,8 @@
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TextureLoader, Texture, RepeatWrapping } from 'three';
-import planetTextures from './utils/planetData'; // glob-imported URLs
+import planetTextures, { cloudTextures } from './utils/planetData'; // glob-imported URLs
 
 // Component for a textured sphere
 function TexturedSphere({ texturePath }: { texturePath: string }) {
@@ -80,8 +80,61 @@ export default function App() {
         {/* Right sphere: loads selected planet texture */}
         <TexturedSphere texturePath={selectedTexture} />
 
+        {/* Clouds for the selected planet */}
+        <CloudSphere texturePath={Object.values(cloudTextures)[0] as string} />
+
         <OrbitControls />
-      </Canvas>
+      </Canvas>clouds
     </div>
+  );
+}
+
+// Component for rendering clouds
+function CloudSphere({ texturePath }: { texturePath: string }) {
+  const [texture, setTexture] = useState<Texture | null>(null);
+  const meshRef = useRef<THREE.Mesh>(null!); // Ref for the mesh
+
+  useEffect(() => {
+    if (!texturePath) return;
+
+    const loader = new TextureLoader();
+    loader.load(
+      texturePath,
+      (loadedTexture) => {
+        loadedTexture.wrapS = RepeatWrapping;
+        loadedTexture.wrapT = RepeatWrapping;
+        loadedTexture.repeat.set(1, 1);
+        loadedTexture.needsUpdate = true;
+        setTexture(loadedTexture);
+      },
+      undefined,
+      (error) => {
+        console.error('Error loading cloud texture:', error);
+      }
+    );
+  }, [texturePath]);
+
+  // Rotate the mesh on each frame
+  useFrame(() => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y += 0.001; // Adjust rotation speed here
+    }
+  });
+
+  return (
+    <mesh position={[2.2, 0, 0]} ref={meshRef}> {/* Added ref */}
+      <sphereGeometry args={[2.03, 32, 32]} /> {/* Slightly larger than the planet */}
+      {texture ? (
+        <meshStandardMaterial
+          map={texture}
+          transparent
+          opacity={0.75} // Adjusted opacity
+          alphaTest={0.01} // Helps with transparent pngs
+          color={0xffffff} // Explicitly set color to white
+        />
+      ) : (
+        <meshStandardMaterial color="lightgray" wireframe />
+      )}
+    </mesh>
   );
 }
