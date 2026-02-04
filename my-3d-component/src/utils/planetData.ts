@@ -18,7 +18,7 @@ const planetTextures: PlanetTexture[] = Object.entries(modules).map(([key, url])
   let name = `${folderName} ${fileName.split('_')[1] || fileName}`;
   name = name.replace(/-\d+x\d+$/, ''); // Remove resolution suffix if present
 
-  console.log('Planet textures:', planetTextures);
+
 
   return {
     name,
