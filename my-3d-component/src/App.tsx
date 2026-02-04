@@ -159,24 +159,18 @@ const assignedCloudTexture = useMemo(() => {
 
   const controlsRef = useRef<any>(null); // Ref for OrbitControls
 
-  useEffect(() => {
-    if (controlsRef.current) {
-      const targetPlanetX = currentPlanetIndex * 12;
-      const cameraDistanceFromTarget = 8; // The original Z distance from the central planet
+useEffect(() => {
+  if (controlsRef.current) {
+    const targetPlanetX = currentPlanetIndex * 12;
+    const cameraDistanceFromTarget = 8;
 
-      // Smoothly interpolate the target's X-position
-      controlsRef.current.target.x = THREE.MathUtils.lerp(controlsRef.current.target.x, targetPlanetX, 0.1);
+    // Directly set the target and camera positions (no lerp)
+    controlsRef.current.target.set(targetPlanetX, 0, 0);
+    controlsRef.current.object.position.set(targetPlanetX, 0, cameraDistanceFromTarget);
 
-      // Smoothly interpolate the camera's X-position to keep it directly above the target
-      controlsRef.current.object.position.x = THREE.MathUtils.lerp(controlsRef.current.object.position.x, targetPlanetX, 0.1);
-
-      // Ensure the camera's Y and Z positions remain constant relative to the target (or default view)
-      controlsRef.current.object.position.y = THREE.MathUtils.lerp(controlsRef.current.object.position.y, 0, 0.1); // Reset Y to 0
-      controlsRef.current.object.position.z = THREE.MathUtils.lerp(controlsRef.current.object.position.z, targetPlanetX + cameraDistanceFromTarget, 0.1); // Correct Z position
-
-      controlsRef.current.update();
-    }
-  }, [currentPlanetIndex]);
+    controlsRef.current.update();
+  }
+}, [currentPlanetIndex]);
 
   const nextPlanet = () => {
     setCurrentPlanetIndex((prevIndex) => (prevIndex + 1) % planets.length);
