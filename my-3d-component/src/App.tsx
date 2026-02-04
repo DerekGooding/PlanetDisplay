@@ -1,15 +1,15 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
-import { Selection, EffectComposer, Outline } from '@react-three/postprocessing'; // Added imports
+import { Selection, EffectComposer, Outline, Select } from '@react-three/postprocessing';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { TextureLoader, Texture, RepeatWrapping } from 'three';
 import planetTextures, { cloudTextures } from './utils/planetData';
-import { planets } from './data/planets'; // Import planets data
-import { Planet as PlanetModel } from './models/Planet'; // Import Planet model
+import { planets } from './data/planets';
+import { Planet as PlanetModel } from './models/Planet';
 
 // Component for a textured sphere
-function TexturedSphere({ texturePath, position }: { texturePath: string, position: [number, number, number] }) {
+function TexturedSphere({ texturePath }: { texturePath: string }) {
   const [texture, setTexture] = useState<Texture | null>(null);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ function TexturedSphere({ texturePath, position }: { texturePath: string, positi
   }, [texturePath]);
 
   return (
-    <mesh position={position}>
+    <mesh>
       <sphereGeometry args={[2, 32, 32]} />
       {texture ? (
         <meshStandardMaterial map={texture} transparent alphaTest={0.5} color="white" />
@@ -45,7 +45,7 @@ function TexturedSphere({ texturePath, position }: { texturePath: string, positi
 }
 
 // Component for rendering clouds
-function CloudSphere({ texturePath, position }: { texturePath: string, position: [number, number, number] }) {
+function CloudSphere({ texturePath }: { texturePath: string }) {
   const [texture, setTexture] = useState<Texture | null>(null);
   const meshRef = useRef<THREE.Mesh>(null!);
 
@@ -93,8 +93,6 @@ function CloudSphere({ texturePath, position }: { texturePath: string, position:
   );
 }
 
-import { Select } from '@react-three/postprocessing'; // Added Select import
-
 function PlanetComponent({
   planet,
   planetTexturePath,
@@ -119,23 +117,11 @@ function PlanetComponent({
         onPointerOver={() => onPointerOver(planet)}
         onPointerOut={onPointerOut}
       >
-        <TexturedSphere texturePath={planetTexturePath} position={[0, 0, 0]} />
-        <CloudSphere texturePath={cloudTexturePath} position={[0, 0, 0]} />
+        <TexturedSphere texturePath={planetTexturePath} />
+        <CloudSphere texturePath={cloudTexturePath} />
       </group>
     </Select>
   );
-}
-
-// Component to control camera movement
-function CameraRig({ currentPlanetIndex }: { currentPlanetIndex: number }) {
-  const { camera } = useThree();
-  const targetCameraX = currentPlanetIndex * 12;
-
-  useFrame(() => {
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCameraX, 0.05);
-  });
-
-  return null; // This component doesn't render anything visible itself
 }
 
 export default function App() {
@@ -167,12 +153,40 @@ export default function App() {
     setHoveredPlanet(null);
   };
 
+  const controlsRef = useRef<any>(null); // Ref for OrbitControls
+
+  useEffect(() => {
+    if (controlsRef.current) {
+      const targetPlanetX = currentPlanetIndex * 12;
+      const cameraDistanceFromTarget = 8; // The original Z distance from the central planet
+
+      // Smoothly interpolate the target's X-position
+      controlsRef.current.target.x = THREE.MathUtils.lerp(controlsRef.current.target.x, targetPlanetX, 0.1);
+
+      // Smoothly interpolate the camera's X-position to keep it directly above the target
+      controlsRef.current.object.position.x = THREE.MathUtils.lerp(controlsRef.current.object.position.x, targetPlanetX, 0.1);
+
+      // Ensure the camera's Y and Z positions remain constant relative to the target (or default view)
+      controlsRef.current.object.position.y = THREE.MathUtils.lerp(controlsRef.current.object.position.y, 0, 0.1); // Reset Y to 0
+      controlsRef.current.object.position.z = THREE.MathUtils.lerp(controlsRef.current.object.position.z, targetPlanetX + cameraDistanceFromTarget, 0.1); // Correct Z position
+
+      controlsRef.current.update();
+    }
+  }, [currentPlanetIndex]);
+
   const nextPlanet = () => {
     setCurrentPlanetIndex((prevIndex) => (prevIndex + 1) % planets.length);
   };
 
   const prevPlanet = () => {
     setCurrentPlanetIndex((prevIndex) => (prevIndex - 1 + planets.length) % planets.length);
+  };
+
+  const handleResetView = () => {
+    setCurrentPlanetIndex(0);
+    if (controlsRef.current) {
+      controlsRef.current.reset();
+    }
   };
 
   return (
@@ -185,7 +199,7 @@ export default function App() {
         <button onClick={nextPlanet} style={{ marginRight: '10px', padding: '8px 15px' }}>
           Next
         </button>
-        <button onClick={() => setCurrentPlanetIndex(0)} style={{ padding: '8px 15px' }}>
+        <button onClick={handleResetView} style={{ padding: '8px 15px' }}>
           Reset View
         </button>
       </div>
@@ -220,8 +234,12 @@ export default function App() {
           ))}
         </Selection>
 
-        <OrbitControls enableRotate={false} enablePan={true} enableZoom={true} />
-        <CameraRig currentPlanetIndex={currentPlanetIndex} />
+        <OrbitControls
+          ref={controlsRef}
+          enableRotate={false}
+          enablePan={true}
+          enableZoom={true}
+        />
       </Canvas>
 
       {hoveredPlanet && (
