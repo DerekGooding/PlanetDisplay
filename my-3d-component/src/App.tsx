@@ -126,6 +126,7 @@ function PlanetComponent({
 
 export default function App() {
   const [currentPlanetIndex, setCurrentPlanetIndex] = useState(0);
+  const [targetPlanetIndex, setTargetPlanetIndex] = useState(0);
 
   const assignedPlanetTextures = useMemo(() => {
     const assigned: { [key: string]: string } = {};
@@ -157,34 +158,65 @@ const assignedCloudTexture = useMemo(() => {
     setHoveredPlanet(null);
   };
 
-  const controlsRef = useRef<any>(null); // Ref for OrbitControls
+  const controlsRef = useRef<any>(null);
 
-useEffect(() => {
-  if (controlsRef.current) {
-    const targetPlanetX = currentPlanetIndex * 12;
-    const cameraDistanceFromTarget = 8;
+function CameraAnimator() {
+    useFrame(() => {
+      if (controlsRef.current) {
+        const targetPlanetX = targetPlanetIndex * 12;
+        const cameraDistanceFromTarget = 8;
 
-    // Directly set the target and camera positions (no lerp)
-    controlsRef.current.target.set(targetPlanetX, 0, 0);
-    controlsRef.current.object.position.set(targetPlanetX, 0, cameraDistanceFromTarget);
+        // Smoothly interpolate the target's position
+        controlsRef.current.target.x = THREE.MathUtils.lerp(
+          controlsRef.current.target.x,
+          targetPlanetX,
+          0.1
+        );
+        controlsRef.current.target.y = THREE.MathUtils.lerp(
+          controlsRef.current.target.y,
+          0,
+          0.1
+        );
+        controlsRef.current.target.z = THREE.MathUtils.lerp(
+          controlsRef.current.target.z,
+          0,
+          0.1
+        );
 
-    controlsRef.current.update();
+        // Smoothly interpolate the camera's position
+        controlsRef.current.object.position.x = THREE.MathUtils.lerp(
+          controlsRef.current.object.position.x,
+          targetPlanetX,
+          0.1
+        );
+        controlsRef.current.object.position.y = THREE.MathUtils.lerp(
+          controlsRef.current.object.position.y,
+          0,
+          0.1
+        );
+        controlsRef.current.object.position.z = THREE.MathUtils.lerp(
+          controlsRef.current.object.position.z,
+          cameraDistanceFromTarget,
+          0.1
+        );
+
+        controlsRef.current.update();
+      }
+    });
+
+    return null;
   }
-}, [currentPlanetIndex]);
 
   const nextPlanet = () => {
-    setCurrentPlanetIndex((prevIndex) => (prevIndex + 1) % planets.length);
+    setTargetPlanetIndex((prevIndex) => (prevIndex + 1) % planets.length);
   };
 
   const prevPlanet = () => {
-    setCurrentPlanetIndex((prevIndex) => (prevIndex - 1 + planets.length) % planets.length);
+    setTargetPlanetIndex((prevIndex) => (prevIndex - 1 + planets.length) % planets.length);
   };
 
   const handleResetView = () => {
-    setCurrentPlanetIndex(0);
-    if (controlsRef.current) {
-      controlsRef.current.reset();
-    }
+    setTargetPlanetIndex(0);
   };
 
   return (
@@ -208,6 +240,8 @@ useEffect(() => {
         <directionalLight position={[5, 5, 5]} intensity={1} />
         <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade />
 
+        <CameraAnimator />
+        
         <Selection>
           <EffectComposer multisampling={8} autoClear={false}>
             <Outline blur
