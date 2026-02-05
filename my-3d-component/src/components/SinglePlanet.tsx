@@ -46,12 +46,10 @@ function StarField({ count = 1400, radius = 55 }) {
 
 function PlanetViewer({ 
   texturePath, 
-  normalMapPath,
-  capAngle = 10 // Angle in degrees to flatten at poles
+  normalMapPath
 }: { 
   texturePath: string; 
   normalMapPath?: string;
-  capAngle?: number;
 }) {
   const globeRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null!);
@@ -59,63 +57,11 @@ function PlanetViewer({
   const texture = useLoader(THREE.TextureLoader, texturePath);
   const [loadedNormalMap, setLoadedNormalMap] = useState<THREE.Texture | null>(null);
 
-  // Create custom sphere geometry with flattened poles
-  const customSphereGeometry = useMemo(() => {
-    const widthSegments = 256;
-    const heightSegments = 256;
-    const radius = 1;
-    
-    const geometry = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
-    const position = geometry.attributes.position;
-    
-    // Angle threshold in radians for flattening poles
-    const capAngleRad = (capAngle * Math.PI) / 180;
-    
-    // Modify vertices near the poles
-    for (let i = 0; i < position.count; i++) {
-      const x = position.getX(i);
-      const y = position.getY(i);
-      const z = position.getZ(i);
-      
-      // Calculate the angle from the vertical axis
-      const phi = Math.acos(y / radius);
-      
-      // Flatten top cap
-      if (phi < capAngleRad) {
-        const targetY = radius * Math.cos(capAngleRad);
-        const scale = Math.sin(capAngleRad);
-        position.setXYZ(
-          i,
-          x * scale / Math.sqrt(x * x + z * z) * Math.sqrt(x * x + z * z),
-          targetY,
-          z * scale / Math.sqrt(x * x + z * z) * Math.sqrt(x * x + z * z)
-        );
-      }
-      
-      // Flatten bottom cap
-      if (phi > Math.PI - capAngleRad) {
-        const targetY = -radius * Math.cos(capAngleRad);
-        const scale = Math.sin(capAngleRad);
-        position.setXYZ(
-          i,
-          x * scale / Math.sqrt(x * x + z * z) * Math.sqrt(x * x + z * z),
-          targetY,
-          z * scale / Math.sqrt(x * x + z * z) * Math.sqrt(x * x + z * z)
-        );
-      }
-    }
-    
-    position.needsUpdate = true;
-    geometry.computeVertexNormals(); // Recompute normals for proper lighting
-    
-    return geometry;
-  }, [capAngle]);
-
   // Apply texture settings
   useEffect(() => {
     if (texture) {
       texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping; // Clamp at poles to reduce artifacts
       texture.repeat.set(1, 1);
       texture.needsUpdate = true;
     }
@@ -128,16 +74,17 @@ function PlanetViewer({
     }
   }, [normalMapPath]);
 
-  // Apply normal map to material
+  // Apply normal map to material with optimized settings
   useEffect(() => {
     if (materialRef.current && loadedNormalMap) {
-      // KEY FIX: Use tangent space normal map with proper encoding
       loadedNormalMap.wrapS = THREE.RepeatWrapping;
-      loadedNormalMap.wrapT = THREE.RepeatWrapping;
+      loadedNormalMap.wrapT = THREE.ClampToEdgeWrapping; // Clamp at poles
+      loadedNormalMap.anisotropy = 16; // Maximum anisotropic filtering
       
       materialRef.current.normalMap = loadedNormalMap;
       materialRef.current.normalMapType = THREE.TangentSpaceNormalMap;
-      materialRef.current.normalScale.set(0.5, 0.5);
+      // Reduce normal intensity near poles by using lower scale
+      materialRef.current.normalScale.set(0.3, 0.3);
       materialRef.current.needsUpdate = true;
     } else if (materialRef.current && !loadedNormalMap) {
       materialRef.current.normalMap = null;
@@ -158,13 +105,14 @@ function PlanetViewer({
       )}
       
       <mesh ref={globeRef}>
-        {/* Use custom sphere geometry with flattened poles */}
-        <primitive object={customSphereGeometry} />
+        {/* High segment count for smoother interpolation */}
+        <sphereGeometry args={[1, 256, 256]} />
         <meshStandardMaterial
           ref={materialRef}
           map={texture}
           metalness={0.1}
           roughness={0.8}
+          flatShading={false}
         />
       </mesh>
 
@@ -212,7 +160,6 @@ export default function SinglePlanet() {
           <PlanetViewer
             texturePath={currentPlanetConfig.texturePath}
             normalMapPath={currentPlanetConfig.normalMapPath}
-            capAngle={10}
           />
         )}
 
