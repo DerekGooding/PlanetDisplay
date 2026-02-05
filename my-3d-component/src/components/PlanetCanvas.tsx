@@ -64,7 +64,8 @@ function PlanetCanvas({
             <PlanetComponent
               key={planet.id}
               planet={planet}
-              planetTexturePath={newAssignedPlanetTextures[planet.id]}
+              planetTexturePath={newAssignedPlanetTextures[planet.id].texturePath}
+              normalMapPath={newAssignedPlanetTextures[planet.id].normalMapPath} // Pass normal map path
               cloudTexturePath={newAssignedCloudTexture}
               onPointerOver={onPointerOver}
               onPointerOut={onPointerOut}

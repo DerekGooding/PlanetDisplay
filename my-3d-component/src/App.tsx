@@ -1,11 +1,10 @@
-import IcePlanet_NoDrei from './components/IcePlanet';
-
-
+import SinglePlanet from './components/SinglePlanet';
 
 export default function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      <IcePlanet_NoDrei />
+      <SinglePlanet />
     </div>
   );
 }
+

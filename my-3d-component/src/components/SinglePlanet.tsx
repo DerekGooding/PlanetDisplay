@@ -1,15 +1,10 @@
-// IcePlanet_NoDrei.jsx
-// Requires: three, @react-three/fiber
-// No @react-three/drei needed.
-
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react'; // Added useEffect
 import * as THREE from 'three';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 
-import planetTextures from '../utils/planetData';
-
-
+import planetConfigs from '../utils/planetData'; // Using planetConfigs
+import { OptionalNormalMapLoader } from './OptionalNormalMapLoader'; // NEW IMPORT
 
 
 function StarField({ count = 1400, radius = 55 }) {
@@ -62,48 +57,173 @@ function StarField({ count = 1400, radius = 55 }) {
   );
 }
 
-function IceGlobe({ texturePath }: { texturePath: string }) {
+
+
+function PlanetViewer({ texturePath, normalMapPath }: { texturePath: string; normalMapPath?: string }) {
+
   const globeRef = useRef<THREE.Mesh>(null);
+
+  const materialRef = useRef<THREE.MeshStandardMaterial>(null!); // NEW REF
+
+
+
   const texture = useLoader(THREE.TextureLoader, texturePath);
 
+  const [loadedNormalMap, setLoadedNormalMap] = useState<THREE.Texture | null>(null);
+
+
+
+  // Apply main texture settings
+
+  useEffect(() => {
+
+    if (texture) {
+
+      texture.wrapS = THREE.RepeatWrapping;
+
+      texture.wrapT = THREE.RepeatWrapping;
+
+      texture.repeat.set(1, 1);
+
+      texture.needsUpdate = true;
+
+    }
+
+  }, [texture]); // Re-run when main texture changes
+
+
+
+    // NEW useEffect: Reset loadedNormalMap when normalMapPath becomes falsy
+
+
+
+    useEffect(() => {
+
+
+
+      if (!normalMapPath) {
+
+
+
+        setLoadedNormalMap(null);
+
+
+
+      }
+
+
+
+    }, [normalMapPath, setLoadedNormalMap]); // setLoadedNormalMap is a stable function reference
+
+
+
+    // NEW useEffect: Directly assign normalMap to material
+
+
+
+    useEffect(() => {
+
+
+
+      if (materialRef.current) {
+
+
+
+        materialRef.current.normalMap = loadedNormalMap;
+
+
+
+        materialRef.current.normalScale = loadedNormalMap ? new THREE.Vector2(0.5, 0.5) : new THREE.Vector2(1, 1); // Ensure default scale when no normal map
+
+
+
+        materialRef.current.needsUpdate = true; // Essential to signal Three.js to re-render material
+
+
+
+      }
+
+
+
+    }, [loadedNormalMap]); // Re-run when loadedNormalMap changes
+
+
+
   useFrame((_, dt) => {
+
     if (globeRef.current) globeRef.current.rotation.y += dt * 0.06;
+
   });
 
+
+
   return (
+
     <group>
+
+      {normalMapPath && <OptionalNormalMapLoader path={normalMapPath} onLoaded={setLoadedNormalMap} />}
+
       <mesh ref={globeRef}>
+
         <sphereGeometry args={[1, 128, 128]} />
-        <meshStandardMaterial map={texture} />
+
+        <meshStandardMaterial 
+
+          ref={materialRef} // ASSIGN REF
+
+          map={texture} 
+
+          // normalMap={loadedNormalMap} // REMOVED
+
+          // normalScale={loadedNormalMap ? new THREE.Vector2(2, 2) : undefined} // REMOVED
+
+        /> {/* Applied loadedNormalMap */}
+
       </mesh>
+
+
 
       {/* Atmosphere / glow shell */}
+
       <mesh scale={1.04}>
+
         <sphereGeometry args={[1, 128, 128]} />
+
         <meshBasicMaterial
+
           color={'#77e6ff'}
+
           transparent
+
           opacity={0.12}
+
           blending={THREE.AdditiveBlending}
+
           depthWrite={false}
+
           side={THREE.BackSide}
+
         />
+
       </mesh>
+
     </group>
+
   );
+
 }
 
-export default function IcePlanet_NoDrei() {
+export default function SinglePlanet() { // Renamed component
   const [currentTextureIndex, setCurrentTextureIndex] = useState(0);
 
-  const currentTexture = planetTextures[currentTextureIndex];
+  const currentPlanetConfig = planetConfigs[currentTextureIndex]; // Renamed variable
 
   const handleNextTexture = () => {
-    setCurrentTextureIndex((prevIndex) => (prevIndex + 1) % planetTextures.length);
+    setCurrentTextureIndex((prevIndex) => (prevIndex + 1) % planetConfigs.length);
   };
 
   const handlePrevTexture = () => {
-    setCurrentTextureIndex((prevIndex) => (prevIndex - 1 + planetTextures.length) % planetTextures.length);
+    setCurrentTextureIndex((prevIndex) => (prevIndex - 1 + planetConfigs.length) % planetConfigs.length);
   };
 
   return (
@@ -120,7 +240,12 @@ export default function IcePlanet_NoDrei() {
         <directionalLight position={[4, 2, 3]} intensity={1.25} />
         <pointLight position={[-3, -2, -4]} intensity={0.6} />
 
-        {currentTexture && <IceGlobe texturePath={currentTexture.path} />}
+        {currentPlanetConfig && (
+            <PlanetViewer 
+                texturePath={currentPlanetConfig.texturePath} 
+                normalMapPath={currentPlanetConfig.normalMapPath} // Pass normal map path
+            />
+        )}
 
         {/* Mouse/touch orbit + zoom */}
         <OrbitControls
@@ -135,7 +260,7 @@ export default function IcePlanet_NoDrei() {
         />
       </Canvas>
       <div style={{ position: 'absolute', top: '10px', left: '10px', color: 'white', zIndex: 10 }}>
-        Current Planet: {currentTexture ? currentTexture.name : 'Loading...'}
+        Current Planet: {currentPlanetConfig ? currentPlanetConfig.name : 'Loading...'}
       </div>
       <button
         onClick={handlePrevTexture}

@@ -1,17 +1,21 @@
 import { useState, useCallback } from 'react';
-import planetTextures, { cloudTextures } from '../utils/planetData';
+import planetConfigs, { cloudTextures } from '../utils/planetData'; // Renamed import
 import { planets } from '../data/planets';
 
 export interface AssignedTextures {
-  newAssignedPlanetTextures: { [key: string]: string };
+  newAssignedPlanetTextures: { [key: string]: { texturePath: string; normalMapPath?: string } }; // Updated interface
   newAssignedCloudTexture: string;
 }
 
 export function useTextureSystem() {
   const generateRandomTextures = useCallback(() => {
-    const newAssignedPlanetTextures: { [key: string]: string } = {};
+    const newAssignedPlanetTextures: { [key: string]: { texturePath: string; normalMapPath?: string } } = {};
     planets.forEach(planet => {
-      newAssignedPlanetTextures[planet.id] = planetTextures[Math.floor(Math.random() * planetTextures.length)].path;
+      const randomPlanetConfig = planetConfigs[Math.floor(Math.random() * planetConfigs.length)];
+      newAssignedPlanetTextures[planet.id] = {
+        texturePath: randomPlanetConfig.texturePath,
+        normalMapPath: randomPlanetConfig.normalMapPath,
+      };
     });
 
     const cloudPaths = Object.values(cloudTextures);
