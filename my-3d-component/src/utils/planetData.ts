@@ -12,6 +12,7 @@ const groupedPlanetData = new Map<
     folderName: string;
     baseName: string;
     texturePath?: string;
+    roughMapPath?: string;
     normalMapPath?: string;
   }
 >();
@@ -25,7 +26,8 @@ Object.entries(modules).forEach(([key, url]) => {
   const fileName = fileNameWithExt.replace(/\.png$/, '');
 
   const isNormalMap = fileName.includes('_normal');
-  const baseFileName = isNormalMap ? fileName.replace('_normal', '') : fileName;
+  const isRoughMap = fileName.includes('_rough');
+  const baseFileName = fileName.replace(/(_normal|_rough)/, '');
 
   const mapKey = `${folderName}_${baseFileName}`;
 
@@ -39,6 +41,8 @@ Object.entries(modules).forEach(([key, url]) => {
   const entry = groupedPlanetData.get(mapKey)!;
   if (isNormalMap) {
     entry.normalMapPath = fullPath;
+  } else if (isRoughMap) {
+    entry.roughMapPath = fullPath;
   } else {
     entry.texturePath = fullPath;
   }
