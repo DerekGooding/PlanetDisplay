@@ -50,12 +50,14 @@ Object.entries(modules).forEach(([key, url]) => {
 
 const planetConfigs: PlanetConfig[] = Array.from(groupedPlanetData.values())
   .filter(entry => entry.texturePath !== undefined) // Filter out entries without a base texture
+  .filter(entry => entry.texturePath?.includes("upscaled"))
   .map(
   (entry) => {
     // Format the name nicely, removing resolution suffix if present
     let name = `${entry.folderName} ${entry.baseName.split('_')[1] || entry.baseName}`;
     name = name.replace(/-\d+x\d+$/, ''); // Remove resolution suffix if present
     name = name.replace(/_normal$/, ''); // Remove _normal if somehow still present
+    name = name.replace(/_rough$/, ''); // Remove _normal if somehow still present
 
     return {
       name,
