@@ -3,7 +3,7 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 # ---------- CONFIG ----------
-TEXTURE_ROOT = r"C:/REPOS/PlanetDisplay/my-3d-component/src/assets/planets/"
+TEXTURE_ROOT = r"C:/Users/Derek/source/repos/PlanetDisplay/my-3d-component/src/assets/planets/"
 TEXTURE_DIR = TEXTURE_ROOT + "Snowy"
 NORMAL_SCALE = 1.0             # How strong the normals appear
 ROUGH_BLUR_RADIUS = 8          # How blurry roughness maps are

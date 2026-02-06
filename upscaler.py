@@ -4,7 +4,7 @@ from PIL import Image
 from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_upscale import StableDiffusionUpscalePipeline
 
 # ---------- CONFIG ----------
-TEXTURE_ROOT = r"C:/REPOS/PlanetDisplay/my-3d-component/src/assets/planets/"
+TEXTURE_ROOT = r"C:/Users/Derek/source/repos/PlanetDisplay/my-3d-component/src/assets/planets/"
 TEXTURE_DIR = TEXTURE_ROOT + "Snowy"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MODEL_ID = "stabilityai/stable-diffusion-x4-upscaler"  # HF 4x upscaler
