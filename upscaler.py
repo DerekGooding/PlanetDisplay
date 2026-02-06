@@ -5,7 +5,7 @@ from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_upscale impo
 
 # ---------- CONFIG ----------
 TEXTURE_ROOT = r"C:/Users/Derek/source/repos/PlanetDisplay/my-3d-component/src/assets/planets/"
-TEXTURE_DIR = TEXTURE_ROOT + "Snowy"
+TEXTURE_DIR = TEXTURE_ROOT + "Arid"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 MODEL_ID = "stabilityai/stable-diffusion-x4-upscaler"  # HF 4x upscaler
 # ----------------------------
@@ -40,7 +40,11 @@ def batch_upscale(folder):
     for file in os.listdir(folder):
         if not file.lower().endswith(".png"):
             continue
-        if "upscaled_" in file:
+        if "rough" in file:
+            continue
+        if "normal" in file:
+            continue
+        if "upscaled" in file:
             continue
 
         input_path = os.path.join(folder, file)
