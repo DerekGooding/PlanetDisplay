@@ -1,9 +1,17 @@
 import SinglePlanet from './components/SinglePlanet';
+import UpscaleComparer from './components/UpscaleComparer';
+
+import './App.css';
 
 export default function App() {
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      <SinglePlanet />
+    <div className ="stackpanel-vertical">
+      <div className="panel">
+        <SinglePlanet />
+      </div>
+      <div className="panel">
+        <UpscaleComparer />
+      </div>
     </div>
   );
 }

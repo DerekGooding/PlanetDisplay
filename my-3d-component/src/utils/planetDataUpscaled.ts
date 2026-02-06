@@ -48,13 +48,13 @@ Object.entries(modules).forEach(([key, url]) => {
   }
 });
 
-const planetConfigs: PlanetConfig[] = Array.from(groupedPlanetData.values())
+const planetConfigsUpscaled: PlanetConfig[] = Array.from(groupedPlanetData.values())
   .filter(entry => entry.texturePath !== undefined) // Filter out entries without a base texture
-  .filter(entry => !entry.texturePath?.includes("upscaled"))
+  .filter(entry => entry.texturePath?.includes("upscaled"))
   .map(
   (entry) => {
     // Format the name nicely, removing resolution suffix if present
-    let name = `${entry.folderName} ${entry.baseName.split('_')[1] || entry.baseName}`;
+    let name = `${entry.folderName} ${entry.baseName.split('_')[2] || entry.baseName}`;
     name = name.replace(/-\d+x\d+$/, ''); // Remove resolution suffix if present
     name = name.replace(/_normal$/, ''); // Remove _normal if somehow still present
     name = name.replace(/rough$/, ''); // Remove _normal if somehow still present
@@ -67,7 +67,7 @@ const planetConfigs: PlanetConfig[] = Array.from(groupedPlanetData.values())
   }
 );
 
-export default planetConfigs;
+export default planetConfigsUpscaled;
 
 export const cloudTextures = import.meta.glob('../assets/clouds/**/*.png', { 
   eager: true, 
